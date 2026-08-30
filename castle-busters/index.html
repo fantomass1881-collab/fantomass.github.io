@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Castle Busters</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <div id="screen-main" class="screen active">
+        <div class="header">
+            <h1>🏰 Castle Busters</h1>
+        </div>
+        <div class="player-info" id="player-info">
+            <div class="stat-row">
+                <span class="stat-icon">💰</span>
+                <span class="stat-label">Золото:</span>
+                <span class="stat-value" id="gold">500</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🏰</span>
+                <span class="stat-label">Замок:</span>
+                <span class="stat-value" id="castle-level">Ур. 1</span>
+            </div>
+            <div class="hp-bar-container">
+                <div class="hp-bar-label">❤️ HP замка</div>
+                <div class="hp-bar">
+                    <div class="hp-bar-fill" id="castle-hp-bar" style="width: 100%"></div>
+                    <span class="hp-bar-text" id="castle-hp-text">500 / 500</span>
+                </div>
+            </div>
+            <div class="stat-row">
+                <span class="stat-icon">🏆</span>
+                <span class="stat-label">Побед:</span>
+                <span class="stat-value" id="wins">0</span>
+                <span class="stat-icon" style="margin-left:15px">💀</span>
+                <span class="stat-label">Поражений:</span>
+                <span class="stat-value" id="losses">0</span>
+            </div>
+        </div>
+        <div class="army-preview" id="army-preview">
+            <h3>🗡️ Твоя армия</h3>
+            <div class="army-list" id="army-list">
+                <p class="empty-army">Армия пуста. Нанимай воинов!</p>
+            </div>
+        </div>
+        <div class="menu-buttons">
+            <button class="btn btn-primary" onclick="showScreen('recruit')">🛒 Нанять армию</button>
+            <button class="btn btn-danger" onclick="showScreen('attack')">⚔️ Атаковать</button>
+            <button class="btn btn-secondary" onclick="upgradeCastle()">📈 Улучшить замок</button>
+            <button class="btn btn-info" onclick="showScreen('leaderboard')">🏆 Рейтинг</button>
+            <button class="btn btn-gold" onclick="claimDaily()">🎁 Ежедневная награда</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН НАЙМА -->
+    <div id="screen-recruit" class="screen">
+        <div class="header">
+            <h2>🛒 Найм армии</h2>
+        </div>
+        <div class="gold-display">💰 Золото: <span id="recruit-gold">500</span></div>
+        <div class="unit-shop" id="unit-shop"></div>
+        <button class="btn btn-back" onclick="showScreen('main')">⬅️ Назад</button>
+    </div>
+
+    <!-- ЭКРАН АТАКИ -->
+    <div id="screen-attack" class="screen">
+        <div class="header">
+            <h2>⚔️ Выбор цели</h2>
+        </div>
+        <div class="attack-power">⚔️ Твоя мощь: <span id="attack-power">0</span></div>
+        <div class="target-list" id="target-list"></div>
+        <button class="btn btn-back" onclick="showScreen('main')">⬅️ Назад</button>
+    </div>
+
+    <!-- ЭКРАН БИТВЫ -->
+    <div id="screen-battle" class="screen">
+        <div class="header">
+            <h2>⚔️ Битва!</h2>
+        </div>
+        <div class="battle-arena" id="battle-arena">
+            <div class="battle-side attacker">
+                <h3>🏰 Твой замок</h3>
+                <div class="battle-castle" id="attacker-castle">🏰</div>
+                <div class="battle-hp" id="attacker-hp">500/500</div>
+            </div>
+            <div class="battle-vs">⚔️</div>
+            <div class="battle-side defender">
+                <h3>🏰 Замок врага</h3>
+                <div class="battle-castle" id="defender-castle">🏯</div>
+                <div class="battle-hp" id="defender-hp">500/500</div>
+            </div>
+        </div>
+        <div class="battle-log" id="battle-log"></div>
+        <div class="battle-actions" id="battle-actions"></div>
+    </div>
+
+    <!-- ЭКРАН РЕЙТИНГА -->
+    <div id="screen-leaderboard" class="screen">
+        <div class="header">
+            <h2>🏆 Рейтинг</h2>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list"></div>
+        <button class="btn btn-back" onclick="showScreen('main')">⬅️ Назад</button>
+    </div>
+
+    <!-- ЭКРАН ПОБЕДЫ/ПОРАЖЕНИЯ -->
+    <div id="screen-result" class="screen">
+        <div class="result-container" id="result-container"></div>
+        <button class="btn btn-primary" onclick="showScreen('main')">🏠 В меню</button>
+    </div>
+
+    <!-- УВЕДОМЛЕНИЯ -->
+    <div id="toast" class="toast"></div>
+
+    <!-- ЗВУКОВЫЕ ЭФФЕКТЫ -->
+    <audio id="sfx-attack" src="assets/sounds/attack.mp3" preload="auto"></audio>
+    <audio id="sfx-victory" src="assets/sounds/victory.mp3" preload="auto"></audio>
+    <audio id="sfx-defeat" src="assets/sounds/defeat.mp3" preload="auto"></audio>
+    <audio id="sfx-click" src="assets/sounds/click.mp3" preload="auto"></audio>
+    <audio id="sfx-recruit" src="assets/sounds/recruit.mp3" preload="auto"></audio>
+
+    <script src="js/game.js"></script>
+</body>
+</html>
