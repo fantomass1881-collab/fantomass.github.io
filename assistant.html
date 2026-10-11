@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ИИ-помощник</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#111318;--card:#1b1f27;--bubble:#262c38;--mine:#2f6df6;--txt:#eef1f6;--dim:#8b93a5;--accent:#4d8bff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);border-bottom:1px solid #2a3040;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;font-weight:600}
+.hbtns{display:flex;gap:8px}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:14px}
+.icon-btn{background:none;color:var(--dim);font-size:19px;padding:4px 8px}
+.icon-btn:hover{color:var(--txt)}
+#chat{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:85%;padding:10px 13px;border-radius:16px;line-height:1.45;font-size:15px;white-space:pre-wrap;word-wrap:break-word}
+.user{align-self:flex-end;background:var(--mine);border-bottom-right-radius:4px}
+.bot{align-self:flex-start;background:var(--bubble);border-bottom-left-radius:4px}
+.bot.err{background:#4a2230;color:#ffb4c8}
+.typing{color:var(--dim)}
+#row{display:flex;gap:8px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid #2a3040}
+#inp{flex:1;background:#151923;border:1px solid #2a3040;color:var(--txt);border-radius:22px;padding:11px 16px;font-size:15px;outline:none;font-family:inherit}
+#inp:focus{border-color:var(--accent)}
+#send{background:var(--accent);color:#fff;width:44px;height:44px;border-radius:50%;font-size:18px;flex-shrink:0}
+#send:disabled{opacity:.4}
+/* настройки */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:20;align-items:flex-end;justify-content:center}
+#modal.open{display:flex}
+.sheet{background:#1b1f27;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:88dvh;overflow-y:auto}
+.sheet h2{font-size:17px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
+select,input[type=password]{width:100%;background:#151923;border:1px solid #2a3040;color:var(--txt);border-radius:10px;padding:11px;font-size:15px;font-family:inherit}
+.field{display:flex;gap:8px}
+.field input{flex:1}
+.paste{background:#2a3040;color:var(--txt);padding:0 14px;border-radius:10px;font-size:13px}
+.hint{font-size:12px;color:#6d7488;margin-top:6px;line-height:1.5}
+.save{margin-top:18px;width:100%;background:var(--accent);color:#fff;padding:13px;border-radius:12px;font-size:15px;font-weight:600}
+.danger{margin-top:10px;width:100%;background:#3a2029;color:#ff97ad;padding:11px;border-radius:12px;font-size:13px}
+.status{font-size:12px;margin-top:-4px;margin-bottom:auto;text-align:center;padding-top:-10px;color:#6d7488;padding-bottom:-10px;margin-bottom:-30px;margin-top:-30px;display:none;padding-top:-30px}
+#provinfo{font-size12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 ИИ-помощник</h1>
+  <div class="hbtns">
+    <button class="icon-btn" onclick="clearChat()" title="Очистить">🗑</button>
+    <button class="icon-btn" onclick="openSettings()" title="Настройки">⚙️</button>
+  </div>
+</header>
+
+<div id="chat"></div>
+
+<div id="row">
+  <input id="inp" type="text" placeholder="Спроси что угодно…" autocomplete="off">
+  <button id="send" onclick="send()">➤</button>
+</div>
+
+<div id="modal">
+  <div class="sheet">
+    <h2>⚙️ Настройки <button class="icon-btn" onclick="closeSettings()">✕</button></h2>
+
+    <label>Провайдер ИИ</label>
+    <select id="prov">
+      <option value="gemini">Google Gemini — бесплатный ключ из AI Studio</option>
+      <option value="openrouter">OpenRouter — бесплатные модели :free</option>
+    </select>
+
+    <label>API-ключ</label>
+    <div class="field">
+      <input id="key" type="password" placeholder="Вставь ключ сюда">
+      <button class="paste" onclick="pasteKey()">Вставить</button>
+    </div>
+
+    <label>Модель</label>
+    <select id="model"></select>
+
+    <p class="hint" id="hint"></p>
+
+    <button class="save" onclick="saveCfg()">Сохранить</button>
+    <button class="danger" onclick="wipe()">Стереть все данные (ключ и историю)</button>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const LS_CFG = 'ai_cfg_v2', LS_CHAT = 'ai_chat_v2';
+
+const PROVIDERS = {
+  gemini:{
+    url:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    models:['gemini-2.0-flash','gemini-2.5-flash','gemini-2.5-flash-lite'],
+    hint:'Бесплатный ключ берётся на aistudio.google.com → Get API key. Начинается с AIza… Лимит бесплатных запросов обновляется каждый день.'
+  },
+  openrouter:{
+    url:'https://openrouter.ai/api/v1/chat/completions',
+    models:['deepseek/deepseek-chat-v3-0324','google/gemini-2.0-flash-exp','meta-llama/llama-3.3-70b-instruct'],
+    hint:'Ключ с openrouter.ai/keys, начинается с sk-or-v1… Выбирай модели с пометкой :free.'
+  }
+};
+
+let cfg = JSON.parse(localStorage.getItem(LS_CFG)||'{}');
+if(!cfg.provider){cfg={provider:'gemini',key:'',model:'gemini-2.0-flash'};}
+
+let chat = JSON.parse(localStorage.getItem(LS_CHAT)||'[]');
+
+function saveLS(){localStorage.setItem(LS_CHAT,JSON.stringify(chat.slice(-60)));}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function addMsg(role,text,err){
+  const el=document.createElement('div');
+  el.className='msg '+(role==='user'?'user':'bot')+(err?' err':'');
+  el.innerHTML=esc(text);
+  $('chat').appendChild(el);
+  $('chat').scrollTop=1e9;
+  return el;
+}
+
+function render(){
+  $('chat').innerHTML='';
+  if(!chat.length){addMsg('bot','Привет! Я твой ИИ-помощник 🤖\n\nЕсли ещё не настроен ключ — нажми ⚙️ сверху справа и вставь его туда.');return;}
+  chat.forEach(m=>addMsg(m.role,m.content));
+}
+
+async function send(){
+  const t=$('inp').value.trim();
+  if(!t)return;
+  if(!cfg.key){openSettings();addMsg('bot','Сначала вставь API-ключ в настройках ⚙️',true);return;}
+  $('inp').value='';
+  chat.push({role:'user',content:t});
+  addMsg('user',t);
+  const th=addMsg('assistant','думаю…');
+  th.classList.add('typing');
+  $('send').disabled=true;
+  try{
+    const p=PROVIDERS[cfg.provider];
+    const res=await fetch(p.url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+      body:JSON.stringify({
+        model:(cfg.model||p.models[0]),
+        messages:[{role:'system',content:'Ты дружелюбный и полезный ассистент. Отвечай ясно и по делу на языке пользователя.'},...chat.slice(-20)]
+      })
+    });
+    if(!res.ok){
+      let m='Ошибка '+res.status+'. ';
+      if(res.status===401||res.status===403)m='Ключ не принят (ошибка '+res.status+'). Проверь ключ в ⚙️ — скопируй целиком.';
+      else if(res.status===429)m='Лимит запросов исчерпан (429). Подожди минуту или выбери другую модель в ⚙️.';
+      else if(res.status===404)m='Модель не найдена (404). Выбери другую модель в ⚙️.';
+      throw new Error(m);
+    }
+    const data=await res.json();
+    const reply=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(пустой ответ)';
+    th.remove();
+    chat.push({role:'assistant',content:'🤖 '+reply});
+    addMsg('assistant','🤖 '+reply);
+    saveLS();
+  }catch(e){
+    th.remove();
+    chat.pop(); // неудачное сообщение не теряем — вернём в поле ввода
+    $('inp').value=t;
+    addMsg('assistant','⚠️ '+e.message+'\nТекст сообщения вернула в поле ввода.',true);
+    saveLS();
+  }
+  $('send').disabled=false;
+}
+
+function clearChat(){if(confirm('Очистить историю переписки?')){chat=[];saveLS();render();}}
+function wipe(){if(confirm('Стереть ключ И историю без возврата?')){localStorage.removeItem(LS_CFG);localStorage.removeItem(LS_CHAT);cfg={provider:'gemini',key:'',model:'gemini-2.0-flash'};chat=[];render();closeSettings();}}
+
+/* настройки */
+function fillModels(){
+  const p=PROVIDERS[$('prov').value];
+  $('model').innerHTML=p.models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  $('hint').textContent=p.hint;
+  if(cfg.provider===$('prov').value&&cfg.model)$('model').value=cfg.model;
+}
+function openSettings(){
+  $('prov').value=cfg.provider;$('key').value=cfg.key;
+  fillModels();
+  if(cfg.provider===cfg.provider&&cfg.model)$('model').value=cfg.model;
+  $('modal').classList.add('open');
+}
+function closeSettings(){$('modal').classList.remove('open');}
+function pasteKey(){navigator.clipboard.readText().then(t=>{$('key').value=t.trim();}).catch(()=>{});}
+function saveCfg(){
+  const k=$('key').value.trim();
+  if(!k){alert('Поле ключа пустое');return;}
+  cfg={provider:$('prov').value,key:k,model:$('model').value};
+  localStorage.setItem(LS_CFG,JSON.stringify(cfg));
+  closeSettings();
+  addMsg('assistant','✅ Настройки сохранены! Ключ хранится только в этом браузере.');
+}
+
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeSettings();});
+$('inp').addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+
+render();
+</script>
+</body>
+</html>
